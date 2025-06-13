@@ -7,7 +7,7 @@ on:
 
 jobs:
   update-snapshots:
-    if: github.event.issue.pull_request && contains(github.event.comment.body, '/hello')
+    if: github.event.issue.pull_request && github.event.comment.body == '/hello'
     runs-on: ubuntu-latest
     
     permissions:
