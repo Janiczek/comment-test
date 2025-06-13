@@ -25,7 +25,7 @@ jobs:
         id: initial-comment
         with:
           script: |
-            const timestamp = new Date().toISOString();
+            const timestamp = new Date().toLocaleTimeString('en-GB', { hour12: false });
             const comment = await github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
@@ -55,7 +55,7 @@ jobs:
         with:
           script: |
             const commentId = ${{ steps.initial-comment.outputs.result }};
-            const timestamp = new Date().toISOString();
+            const timestamp = new Date().toLocaleTimeString('en-GB', { hour12: false });
             const { data: comment } = await github.rest.issues.getComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -74,7 +74,7 @@ jobs:
         with:
           script: |
             const commentId = ${{ steps.initial-comment.outputs.result }};
-            const timestamp = new Date().toISOString();
+            const timestamp = new Date().toLocaleTimeString('en-GB', { hour12: false });
             const { data: comment } = await github.rest.issues.getComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
