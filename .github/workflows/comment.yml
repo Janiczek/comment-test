@@ -76,6 +76,14 @@ jobs:
 
       - name: Install Playwright browser
         run: uv run playwright install chromium
+
+      - name: Wait for Streamlit app
+        uses: cygnetdigital/wait_for_response@v2.0.0
+        with:
+          url: 'http://localhost:8051/'
+          responseCode: '200,500'
+          timeout: 30000
+          interval: 500
       
       - name: Update snapshots
         run: uv run pytest --update-snapshots
@@ -154,3 +162,11 @@ jobs:
               comment_id: commentId,
               body: comment.body + `\n[${timestamp}] ❌ Failed to update snapshots. Please check the [workflow logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.`
             });
+
+      - name: Kill Streamlit app
+        run: |
+          gh api
+            --method POST
+            -H "Accept: application/vnd.github+json"
+            -H "X-GitHub-Api-Version: 2022-11-28"
+            /repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/force-cancel
