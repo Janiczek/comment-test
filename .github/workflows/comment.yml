@@ -88,6 +88,9 @@ jobs:
           git add '*.png'
           git commit -m "Update snapshots from PR comment"
           git push
+      
+      - name: Trigger CI
+        run: gh workflow run pytest.yml --ref ${{ steps.comment-branch.outputs.head_ref }}
 
       - name: Kill Streamlit app
         if: always()
