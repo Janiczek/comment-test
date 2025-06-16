@@ -68,7 +68,7 @@ jobs:
           interval: 500
 
       - name: Update snapshots
-        run: uv run pytest -l -v --update-snapshots
+        run: uv run pytest --update-snapshots
         working-directory: streamlit-apps
 
       - name: Check for changes
