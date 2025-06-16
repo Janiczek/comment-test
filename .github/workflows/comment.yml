@@ -37,7 +37,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ steps.comment-branch.outputs.head_ref }}
-          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
       
       - name: Install uv
@@ -92,6 +92,11 @@ jobs:
       - name: Kill Streamlit app
         if: always()
         run: kill $(cat streamlit-apps/streamlit.pid)
+      
+      - name: Trigger CI
+        run: gh workflow run pytest.yml --ref ${{ steps.comment-branch.outputs.head_ref }}
+        env:
+          GH_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
       
       - name: Update comment - Success with changes
         if: always() && steps.check-changes.outputs.has_changes == 'true'
