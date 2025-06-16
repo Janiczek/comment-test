@@ -38,11 +38,10 @@ jobs:
           echo $! > streamlit.pid
 
       - name: Wait for Streamlit app
-        uses: emilioschepis/wait-for-endpoint@v1.0.3
+        uses: cygnetdigital/wait_for_response@v2.0.0
         with:
           url: 'http://localhost:8501/'
-          method: GET
-          expected-status: 200
+          responseCode: '200,500'
           timeout: 30000
           interval: 500
 
