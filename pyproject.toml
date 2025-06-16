@@ -1,0 +1,17 @@
+[project]
+name = "comment-test"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "streamlit>=1.45.1",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.0",
+    "pytest-playwright>=0.7.0",
+    "pytest-playwright-snapshot>=1.0",
+    "pytest-xdist>=3.7.0",
+]

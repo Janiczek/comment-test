@@ -1,14 +1,38 @@
-name: Comment stuff
+name: Update Snapshots
 
 on:
-  workflow_dispatch: {}
   issue_comment:
     types: [created]
 
 jobs:
-  update-snapshots:
-    if: github.event.issue.pull_request && github.event.comment.body == '/hello'
+  streamlit-app:
     runs-on: ubuntu-latest
+
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: true
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          version: "0.7.13"
+          cache-dependency-glob: "uv.lock"
+      - name: Install the project
+        run: uv sync --locked
+      - name: Run the Streamlit app
+        run: uv run streamlit run Scrive_Data_Intelligence_App.py
+        working-directory: streamlit-apps
+
+  update-snapshots:
+    if: github.event.issue.pull_request && github.event.comment.body == '/update-snapshots'
+    runs-on: ubuntu-latest
+
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: true
     
     permissions:
       contents: write
@@ -30,7 +54,7 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `[${timestamp}] 🔄 WAIT...`
+              body: `[${timestamp}] 🔄 Updating snapshots...`
             });
             return comment.data.id;
       
@@ -41,16 +65,48 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
       
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: '.python-version'
+      
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+      
+      - name: Install dependencies
+        run: |
+          uv sync
+
+      - name: Install Playwright browser
+        run: |
+          uv run playwright install chromium
+      
+      - name: Update snapshots
+        run: |
+          uv run pytest --update-snapshots
+      
+      - name: Check for changes
+        id: check-changes
+        run: |
+          if git diff --quiet -- '*.png'; then
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          else
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          fi
+      
       - name: Commit and push changes
+        if: steps.check-changes.outputs.has_changes == 'true'
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          touch a.txt
-          git add a.txt
-          git commit -m "Yo"
+          git add '*.png'
+          git commit -m "Update snapshots from PR comment"
           git push
       
       - name: Update comment - Success with changes
+        if: always() && steps.check-changes.outputs.has_changes == 'true'
         uses: actions/github-script@v7
         with:
           script: |
@@ -65,7 +121,26 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               comment_id: commentId,
-              body: comment.body + `\n[${timestamp}] ✅ WORLDDDDDDDDDDDDD`
+              body: comment.body + `\n[${timestamp}] ✅ Done: Snapshots have been updated and pushed to the PR branch.`
+            });
+      
+      - name: Update comment - Success no changes
+        if: always() && steps.check-changes.outputs.has_changes == 'false'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const commentId = ${{ steps.initial-comment.outputs.result }};
+            const timestamp = new Date().toLocaleTimeString('en-GB', { hour12: false });
+            const { data: comment } = await github.rest.issues.getComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: commentId
+            });
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: commentId,
+              body: comment.body + `\n[${timestamp}] ⏭️ Done: No snapshot updates needed.`
             });
       
       - name: Update comment - Failure
@@ -84,5 +159,5 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               comment_id: commentId,
-              body: comment.body + `\n[${timestamp}] ❌ Something went wrong`
+              body: comment.body + `\n[${timestamp}] ❌ Failed to update snapshots. Please check the [workflow logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.`
             });
