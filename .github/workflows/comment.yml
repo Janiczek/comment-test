@@ -91,6 +91,8 @@ jobs:
       
       - name: Trigger CI
         run: gh workflow run pytest.yml --ref ${{ steps.comment-branch.outputs.head_ref }}
+        env:
+          GH_TOKEN: ${{ github.token }}
 
       - name: Kill Streamlit app
         if: always()
