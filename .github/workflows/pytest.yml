@@ -1,8 +1,11 @@
 name: pytest
 
 on:
+  push:
+    branches: [ $default-branch ]
   pull_request:
-    types: [opened, synchronize, reopened]
+    branches: [ $default-branch ]
+
 
 jobs:
   test:
@@ -35,10 +38,11 @@ jobs:
           echo $! > streamlit.pid
 
       - name: Wait for Streamlit app
-        uses: cygnetdigital/wait_for_response@v2.0.0
+        uses: emilioschepis/wait-for-endpoint@v1.0.3
         with:
           url: 'http://localhost:8501/'
-          responseCode: '200,500'
+          method: GET
+          expected-status: 200
           timeout: 30000
           interval: 500
 
