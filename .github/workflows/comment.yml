@@ -8,10 +8,6 @@ jobs:
   streamlit-app:
     runs-on: ubuntu-latest
 
-    concurrency:
-      group: ${{ github.workflow }}-${{ github.ref }}
-      cancel-in-progress: true
-
     steps:
       - uses: actions/checkout@v4
       - name: Install uv
@@ -30,10 +26,6 @@ jobs:
     if: github.event.issue.pull_request && github.event.comment.body == '/update-snapshots'
     runs-on: ubuntu-latest
 
-    concurrency:
-      group: ${{ github.workflow }}-${{ github.ref }}
-      cancel-in-progress: true
-    
     permissions:
       contents: write
       issues: write
