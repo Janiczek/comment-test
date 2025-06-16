@@ -1,0 +1,55 @@
+name: pytest
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [ $default-branch ]
+  pull_request:
+    branches: [ $default-branch ]
+
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: true
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          version: "0.7.13"
+          cache-dependency-glob: "uv.lock"
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Install Playwright browser
+        run: uv run playwright install chromium
+
+      - name: Start Streamlit app
+        working-directory: streamlit-apps
+        run: |
+          uv run streamlit run main.py &
+          echo $! > streamlit.pid
+
+      - name: Wait for Streamlit app
+        uses: cygnetdigital/wait_for_response@v2.0.0
+        with:
+          url: 'http://localhost:8501/'
+          responseCode: '200,500'
+          timeout: 30000
+          interval: 500
+
+      - name: Run tests
+        run: uv run pytest
+        working-directory: streamlit-apps
+
+      - name: Kill Streamlit app
+        if: always()
+        run: kill $(cat streamlit-apps/streamlit.pid)

@@ -5,35 +5,10 @@ on:
     types: [created]
 
 jobs:
-  streamlit-app:
-    runs-on: ubuntu-latest
-
-    concurrency:
-      group: ${{ github.workflow }}-${{ github.ref }}
-      cancel-in-progress: true
-
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install uv
-        uses: astral-sh/setup-uv@v5
-        with:
-          enable-cache: true
-          version: "0.7.13"
-          cache-dependency-glob: "uv.lock"
-      - name: Install the project
-        run: uv sync --locked
-      - name: Run the Streamlit app
-        run: uv run streamlit run Scrive_Data_Intelligence_App.py
-        working-directory: streamlit-apps
-
   update-snapshots:
     if: github.event.issue.pull_request && github.event.comment.body == '/update-snapshots'
     runs-on: ubuntu-latest
 
-    concurrency:
-      group: ${{ github.workflow }}-${{ github.ref }}
-      cancel-in-progress: true
-    
     permissions:
       contents: write
       issues: write
@@ -65,32 +40,41 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
       
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version-file: '.python-version'
-      
       - name: Install uv
-        uses: astral-sh/setup-uv@v3
+        uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
+          version: "0.7.13"
+          cache-dependency-glob: "uv.lock"
       
       - name: Install dependencies
-        run: |
-          uv sync
+        run: uv sync --locked
 
       - name: Install Playwright browser
+        run: uv run playwright install chromium
+
+      - name: Start Streamlit app
+        working-directory: streamlit-apps
         run: |
-          uv run playwright install chromium
-      
+          uv run streamlit run main.py &
+          echo $! > streamlit.pid
+
+      - name: Wait for Streamlit app
+        uses: cygnetdigital/wait_for_response@v2.0.0
+        with:
+          url: 'http://localhost:8501/'
+          responseCode: '200,500'
+          timeout: 30000
+          interval: 500
+
       - name: Update snapshots
-        run: |
-          uv run pytest --update-snapshots
-      
+        run: uv run pytest --update-snapshots
+        working-directory: streamlit-apps
+
       - name: Check for changes
         id: check-changes
         run: |
-          if git diff --quiet -- '*.png'; then
+          if git diff --quiet -- '*.png' && (! git ls-files --others --exclude-standard -- '*.png' | grep -q .); then
             echo "has_changes=false" >> $GITHUB_OUTPUT
           else
             echo "has_changes=true" >> $GITHUB_OUTPUT
@@ -104,6 +88,15 @@ jobs:
           git add '*.png'
           git commit -m "Update snapshots from PR comment"
           git push
+      
+      - name: Kill Streamlit app
+        if: always()
+        run: kill $(cat streamlit-apps/streamlit.pid)
+      
+      - name: Trigger CI
+        run: gh workflow run pytest.yml --ref ${{ steps.comment-branch.outputs.head_ref }}
+        env:
+          GH_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
       
       - name: Update comment - Success with changes
         if: always() && steps.check-changes.outputs.has_changes == 'true'
