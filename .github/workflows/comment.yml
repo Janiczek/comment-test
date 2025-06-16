@@ -71,13 +71,10 @@ jobs:
         run: uv run pytest -l -v --update-snapshots
         working-directory: streamlit-apps
 
-      - name: List files
-        run: find streamlit-apps -name '*.png'
-      
       - name: Check for changes
         id: check-changes
         run: |
-          if git diff --quiet -- '*.png'; then
+          if git diff --quiet -- '*.png' && (! git ls-files --others --exclude-standard -- '*.png' | grep -q .); then
             echo "has_changes=false" >> $GITHUB_OUTPUT
           else
             echo "has_changes=true" >> $GITHUB_OUTPUT
