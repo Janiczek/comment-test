@@ -164,6 +164,7 @@ jobs:
             });
 
       - name: Kill Streamlit app
+        if: always()
         run: |
           gh api
             --method POST
