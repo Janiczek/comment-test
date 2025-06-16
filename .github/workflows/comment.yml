@@ -54,8 +54,8 @@ jobs:
         run: uv run playwright install chromium
 
       - name: Start Streamlit app
+        working-directory: streamlit-apps
         run: |
-          cd streamlit-apps
           uv run streamlit run main.py &
           echo $! > streamlit.pid
 
@@ -68,7 +68,11 @@ jobs:
           interval: 500
 
       - name: Update snapshots
-        run: uv run pytest --update-snapshots
+        run: uv run pytest -l -v --update-snapshots
+        working-directory: streamlit-apps
+
+      - name: List files
+        run: find streamlit-apps -name '*.png'
       
       - name: Check for changes
         id: check-changes
